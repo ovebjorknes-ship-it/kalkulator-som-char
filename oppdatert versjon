@@ -1,0 +1,1696 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>easyReq – Chatkalkulator</title>
+
+<style>
+  :root{
+    --er-primary: #ea5c0c;
+    --er-accent:  #ea5c0c;
+    --er-page-bg: #000000;
+
+    --er-surface:   #111418;
+    --er-surface-2: #161b21;
+    --er-border:    #233044;
+    --er-text:      #E5E7EB;
+    --er-text-inv:  #FFFFFF;
+    --er-muted:     #9AA6B2;
+
+    --er-btn-radius: 10px;
+    --er-bubble-radius: 16px;
+    --er-chat-maxw: 1200px;
+    --er-side-pad:  0.5%;
+  }
+
+  html, body { background:#000; }
+  body {
+    color:var(--er-text);
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+  }
+
+  .container{max-width:100%;margin:0 auto;padding:24px}
+
+  .tpb-hero{background:#000;color:var(--er-text);padding:48px 0}
+  .tpb-hero h1{margin:0 0 10px 0}
+  .tpb-hero p{margin:0}
+
+  .chat-wrap{
+    margin:24px auto 0 auto;
+    border:1px solid var(--er-border);
+    background:var(--er-surface);
+    border-radius:14px;
+    padding:12px;
+    min-height:420px;
+    display:flex; flex-direction:column;
+    max-width:var(--er-chat-maxw);
+    width:100%;
+  }
+  .chat{
+    display:flex; flex-direction:column; gap:12px;
+    padding:8px;
+    overflow-y:auto;
+    max-height:70vh;
+  }
+
+  .row{ display:flex; gap:10px; align-items:flex-end; }
+  .row.bot{ justify-content:flex-start; margin-left: var(--er-side-pad); }
+  .row.user{ justify-content:flex-end; margin-right: var(--er-side-pad); }
+
+  .avatar{
+    width:clamp(28px, 3.8vw, 44px);
+    height:clamp(28px, 3.8vw, 44px);
+    object-fit:cover; display:block; border:1px solid var(--er-border);
+    background:#fff;
+  }
+  .avatar.bot{ border-radius:10px; }
+  .avatar.user{ border-radius:50%; }
+
+  .msg{
+    max-width: 95%;
+    padding:12px 14px;
+    border:1px solid var(--er-border);
+    border-radius: var(--er-bubble-radius);
+    line-height: 1.5;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+  }
+  .msg.bot{ background:var(--er-surface-2); color:var(--er-text); }
+  .msg.bot.question{ font-size:16px; font-weight:600; }
+  .msg.user{ background:var(--er-primary); color:var(--er-text-inv); border-color: transparent; }
+
+  .actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:8px;
+    align-self:flex-end;
+    margin-left: 0;
+    margin-right: var(--er-side-pad);
+    justify-content:flex-end;
+  }
+
+  .chip, .btn{
+    cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center;
+    border-radius: var(--er-btn-radius);
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease, filter .15s ease;
+    user-select:none;
+    font: inherit;
+  }
+  .chip{
+    background:transparent; color:var(--er-accent);
+    border:1.5px solid var(--er-accent);
+    padding:8px 12px;
+  }
+  .chip:hover{ background:rgba(234,92,12,0.12); border-color:#ff6b1e; box-shadow:0 0 0 3px rgba(234,92,12,0.18); }
+
+  .btn.primary{
+    background:var(--er-primary); color:#fff; border:0;
+    padding:12px 16px;
+  }
+  .btn.primary:hover{ filter:brightness(0.92); box-shadow:0 0 0 3px rgba(234,92,12,0.18); }
+  .btn.secondary{
+    background:transparent;
+    color:var(--er-accent);
+    border:1.5px solid var(--er-accent);
+    padding:12px 16px;
+  }
+  .btn.secondary:hover{
+    background:rgba(234,92,12,0.12);
+    border-color:#ff6b1e;
+    box-shadow:0 0 0 3px rgba(234,92,12,0.18);
+  }
+
+  .inline-form{ display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap }
+  .inline-form input, .inline-form select{
+    padding:10px 12px;
+    border:1px solid var(--er-border);
+    border-radius:10px;
+    background:var(--er-surface-2);
+    color:var(--er-text);
+    min-width:220px;
+    text-align:center;
+  }
+
+  .meta{ font-size:12px; color:var(--er-muted) }
+
+  .typing{ display:inline-flex; gap:6px; }
+  .dot{ width:8px; height:8px; border-radius:50%; background:#9AA6B2; opacity:.6; animation: blink 1s infinite; }
+  .dot:nth-child(2){ animation-delay: .15s }
+  .dot:nth-child(3){ animation-delay: .3s }
+  @keyframes blink { 0%,80%,100%{ opacity:.2 } 40%{ opacity:1 } }
+
+  .chip:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
+    outline: 3px solid rgba(234,92,12,0.6);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .btn, .chip{ transition:none; }
+    html{ scroll-behavior:auto; }
+  }
+
+  .box-grid{
+    display:grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap:10px;
+    width:min(560px, 100%);
+  }
+  @media (max-width:560px){
+    .box-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  .box{
+    text-align:center;
+    padding:12px 10px;
+    border-radius:12px;
+    border:1.5px solid var(--er-accent);
+    color:var(--er-accent);
+    background:transparent;
+    font-weight:700;
+    cursor:pointer;
+    transition: background-color .15s ease, color .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .box:hover{
+    background:rgba(234,92,12,0.12);
+    border-color:#ff6b1e;
+    box-shadow:0 0 0 3px rgba(234,92,12,0.18);
+  }
+  .box.selected{
+    background:rgba(234,92,12,0.18);
+    color:#ffd9c6;
+    border-color:#ff6b1e;
+    box-shadow:0 0 0 3px rgba(234,92,12,0.18);
+  }
+
+  .slider-wrap{
+    display:grid;
+    gap:10px;
+    padding:12px;
+    border:1px solid var(--er-border);
+    border-radius:12px;
+    background:var(--er-surface-2);
+    width:100%;
+    max-width:100%;
+    align-self:flex-end;
+    margin-right: var(--er-side-pad);
+  }
+  .slider-wrap.slider-wrap-right-mid{
+    width:48%;
+    max-width:560px;
+    min-width:320px;
+    margin-left:auto;
+  }
+  @media (max-width:900px){
+    .slider-wrap.slider-wrap-right-mid{
+      width:100%;
+      min-width:0;
+    }
+  }
+  .slider-top{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:baseline;
+  }
+  .slider-top .k{ color:var(--er-muted); font-size:13px; }
+  .slider-top .v{ font-weight:800; }
+  input[type="range"]{ width:100%; }
+
+  .result-wrap{
+    display:grid;
+    gap:12px;
+    padding:14px;
+    border:1px solid var(--er-border);
+    border-radius:12px;
+    background:var(--er-surface-2);
+    width:100%;
+    max-width:680px;
+    align-self:flex-end;
+    margin-right:var(--er-side-pad);
+  }
+  .result-head{
+    display:grid;
+    gap:6px;
+    padding:10px;
+    border:1px solid rgba(234,92,12,0.4);
+    border-radius:10px;
+    background:rgba(234,92,12,0.08);
+  }
+  .result-label{
+    font-size:14px;
+    color:var(--er-text);
+    font-weight:700;
+  }
+  .result-total{
+    font-size:clamp(28px, 4.2vw, 44px);
+    line-height:1.1;
+    font-weight:900;
+    color:var(--er-primary);
+    letter-spacing:0.2px;
+  }
+  .result-list{
+    display:grid;
+    gap:8px;
+  }
+  .result-item{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    padding:10px;
+    border:1px solid var(--er-border);
+    border-radius:10px;
+    background:rgba(255,255,255,0.01);
+  }
+  .result-item .k{
+    color:var(--er-text);
+    font-size:14px;
+  }
+  .result-item .v{
+    color:var(--er-text);
+    font-weight:800;
+    white-space:nowrap;
+  }
+  .result-note{
+    font-size:12px;
+    color:var(--er-muted);
+  }
+  .result-cta{
+    font-size:14px;
+    color:var(--er-text);
+    padding:10px;
+    border:1px solid rgba(234,92,12,0.35);
+    border-radius:10px;
+    background:rgba(234,92,12,0.06);
+  }
+  .lead-form{
+    display:grid;
+    gap:8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .lead-form input,
+  .lead-form select{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid var(--er-border);
+    border-radius:10px;
+    background:var(--er-surface);
+    color:var(--er-text);
+    box-sizing:border-box;
+  }
+  .lead-form .full{ grid-column:1 / -1; }
+  .lead-form .submit-wrap{
+    grid-column:1 / -1;
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+  }
+  .lead-form-msg{
+    grid-column:1 / -1;
+    font-size:12px;
+    color:var(--er-muted);
+  }
+  @media (max-width:640px){
+    .lead-form{ grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+
+<body>
+<section class="tpb-hero">
+  <div class="container" style="display:flex; flex-direction:column; align-items:center; text-align:center;">
+    <h1>Hvor mye taper din bedrift på ukontrollerte innkjøp?</h1>
+    <p>Regn ut på 60 sekunder. Gratis og uforpliktende.</p>
+    <p class="meta" style="max-width:900px; margin-top:10px;">Norske bedrifter taper typisk 10-18% av innkjøpskostnadene på kjøp uten godkjenning, avtale eller sporbarhet. Legg inn tallene dine og se hva det koster akkurat din bedrift.</p>
+  </div>
+</section>
+
+<section class="container" style="display:flex; justify-content:center; padding: 0;">
+  <div class="chat-wrap" aria-live="polite" aria-label="Kalkulator som chat">
+    <div id="chat" class="chat"></div>
+    <div class="meta" id="progress" style="padding:8px 12px 4px 12px;">
+      <span id="progressText"></span>
+    </div>
+  </div>
+</section>
+
+<script>
+  const AVATAR_BOT_URL  = 'https://cdn.prod.website-files.com/664c5827289f14e928596bdf/665095ee36fc75b882d809ff_easyReq%20icon%2032x32.png';
+  const AVATAR_USER_URL = '';
+
+  const FALLBACK_BOT = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
+      <rect width="44" height="44" rx="10" fill="white"/>
+      <g font-family="Segoe UI, Arial, sans-serif" font-weight="900">
+        <text x="9" y="26" font-size="18" fill="#1f2937">e</text>
+        <text x="20" y="31" font-size="22" fill="#ea5c0c">R</text>
+      </g>
+    </svg>
+  `);
+  const FALLBACK_USER = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
+      <circle cx="22" cy="22" r="22" fill="#232832"/>
+      <circle cx="22" cy="15" r="7" fill="#9AA6B2"/>
+      <path d="M8,36c3-7,10.5-7,14-7s11,0,14,7" fill="#9AA6B2"/>
+    </svg>
+  `);
+
+  const EMPLOYEE_BANDS = ["1-10","11-25","26-50","51-100","101-250","250+"];
+
+  const EMPLOYEE_BAND_MIDPOINT = {
+    "1-10": 6,
+    "11-25": 18,
+    "26-50": 38,
+    "51-100": 76,
+    "101-250": 176,
+    "250+": 300
+  };
+
+  const INDUSTRIES = [
+    "Annet",
+    "Bygg og anlegg",
+    "Eiendomsdrift / Facility Management",
+    "Handel / Retail",
+    "Helse og omsorg",
+    "Hotell og restaurant",
+    "IT og teknologi",
+    "Industri og produksjon",
+    "Landbruk",
+    "Offentlig sektor / Kommune",
+    "Olje, gass og energi",
+    "Transport og logistikk",
+    "Utdanning"
+  ];
+
+  // Spørsmål 3-matrise (fra deg)
+  const MATRIX_Q3 = {
+    "Annet": { question: "Antall prosjekter/år", defaults: {"1-10":1,"11-25":2,"26-50":4,"51-100":8,"101-250":15,"250+":25} },
+    "Bygg og anlegg": { question: "Antall prosjekter/år", defaults: {"1-10":2,"11-25":5,"26-50":10,"51-100":20,"101-250":35,"250+":60} },
+    "Eiendomsdrift / Facility Management": { question: "Antall lokasjoner", defaults: {"1-10":2,"11-25":4,"26-50":6,"51-100":10,"101-250":15,"250+":25} },
+    "Handel / Retail": { question: "Antall lokasjoner", defaults: {"1-10":1,"11-25":2,"26-50":4,"51-100":8,"101-250":15,"250+":30} },
+    "Helse og omsorg": { question: "Antall lokasjoner", defaults: {"1-10":1,"11-25":2,"26-50":3,"51-100":5,"101-250":9,"250+":14} },
+    "Hotell og restaurant": { question: "Antall lokasjoner", defaults: {"1-10":1,"11-25":2,"26-50":3,"51-100":5,"101-250":8,"250+":12} },
+    "IT og teknologi": { question: "Antall kontorer", defaults: {"1-10":1,"11-25":1,"26-50":2,"51-100":3,"101-250":5,"250+":8} },
+    "Industri og produksjon": { question: "Antall lokasjoner", defaults: {"1-10":1,"11-25":2,"26-50":3,"51-100":5,"101-250":8,"250+":12} },
+    "Landbruk": { question: "Antall lokasjoner", defaults: {"1-10":1,"11-25":2,"26-50":3,"51-100":4,"101-250":6,"250+":10} },
+    "Offentlig sektor / Kommune": { question: "Antall prosjekter/år", defaults: {"1-10":1,"11-25":2,"26-50":4,"51-100":8,"101-250":15,"250+":25} },
+    "Olje, gass og energi": { question: "Antall lokasjoner", defaults: {"1-10":1,"11-25":2,"26-50":3,"51-100":5,"101-250":8,"250+":12} },
+    "Transport og logistikk": { question: "Antall kjøretøy", defaults: {"1-10":2,"11-25":5,"26-50":12,"51-100":25,"101-250":60,"250+":120} },
+    "Utdanning": { question: "Antall lokasjoner", defaults: {"1-10":1,"11-25":1,"26-50":2,"51-100":3,"101-250":5,"250+":10} }
+  };
+
+  // Spørsmål 4-matrise (innkjøp)
+  const PURCHASE_MATRIX = {
+    "Bygg og anlegg": {
+      "1-10": "60 000–1 600 000", "11-25": "660 000–4 000 000", "26-50": "1 560 000–8 000 000",
+      "51-100": "3 060 000–16 000 000", "101-250": "6 060 000–40 000 000", "250+": "15 060 000–80 000 000"
+    },
+    "Eiendomsdrift / Facility Management": {
+      "1-10": "80 000–2 000 000", "11-25": "880 000–5 000 000", "26-50": "2 080 000–10 000 000",
+      "51-100": "4 080 000–20 000 000", "101-250": "8 080 000–50 000 000", "250+": "20 080 000–100 000 000"
+    },
+    "Industri og produksjon": {
+      "1-10": "90 000–2 200 000", "11-25": "990 000–5 500 000", "26-50": "2 340 000–11 000 000",
+      "51-100": "4 590 000–22 000 000", "101-250": "9 090 000–55 000 000", "250+": "22 590 000–110 000 000"
+    },
+    "Handel / Retail": {
+      "1-10": "40 000–1 200 000", "11-25": "440 000–3 000 000", "26-50": "1 040 000–6 000 000",
+      "51-100": "2 040 000–12 000 000", "101-250": "4 040 000–30 000 000", "250+": "10 040 000–60 000 000"
+    },
+    "Helse og omsorg": {
+      "1-10": "70 000–1 800 000", "11-25": "770 000–4 500 000", "26-50": "1 820 000–9 000 000",
+      "51-100": "3 570 000–18 000 000", "101-250": "7 070 000–45 000 000", "250+": "17 570 000–90 000 000"
+    },
+    "Offentlig sektor / Kommune": {
+      "1-10": "60 000–1 500 000", "11-25": "660 000–3 750 000", "26-50": "1 560 000–7 500 000",
+      "51-100": "3 060 000–15 000 000", "101-250": "6 060 000–37 500 000", "250+": "15 060 000–75 000 000"
+    },
+    "Olje, gass og energi": {
+      "1-10": "120 000–3 000 000", "11-25": "1 320 000–7 500 000", "26-50": "3 120 000–15 000 000",
+      "51-100": "6 120 000–30 000 000", "101-250": "12 120 000–75 000 000", "250+": "30 120 000–150 000 000"
+    },
+    "Transport og logistikk": {
+      "1-10": "100 000–3 000 000", "11-25": "1 100 000–7 500 000", "26-50": "2 600 000–15 000 000",
+      "51-100": "5 100 000–30 000 000", "101-250": "10 100 000–75 000 000", "250+": "25 100 000–150 000 000"
+    },
+    "Hotell og restaurant": {
+      "1-10": "60 000–1 600 000", "11-25": "660 000–4 000 000", "26-50": "1 560 000–8 000 000",
+      "51-100": "3 060 000–16 000 000", "101-250": "6 060 000–40 000 000", "250+": "15 060 000–80 000 000"
+    },
+    "Landbruk": {
+      "1-10": "50 000–1 400 000", "11-25": "550 000–3 500 000", "26-50": "1 300 000–7 000 000",
+      "51-100": "2 550 000–14 000 000", "101-250": "5 050 000–35 000 000", "250+": "12 550 000–70 000 000"
+    },
+    "IT og teknologi": {
+      "1-10": "40 000–1 100 000", "11-25": "440 000–2 750 000", "26-50": "1 040 000–5 500 000",
+      "51-100": "2 040 000–11 000 000", "101-250": "4 040 000–27 500 000", "250+": "10 040 000–55 000 000"
+    },
+    "Utdanning": {
+      "1-10": "50 000–1 300 000", "11-25": "550 000–3 250 000", "26-50": "1 300 000–6 500 000",
+      "51-100": "2 550 000–13 000 000", "101-250": "5 050 000–32 500 000", "250+": "12 550 000–65 000 000"
+    },
+    "Annet": {
+      "1-10": "50 000–1 500 000", "11-25": "550 000–3 750 000", "26-50": "1 300 000–7 500 000",
+      "51-100": "2 550 000–15 000 000", "101-250": "5 050 000–37 500 000", "250+": "12 550 000–75 000 000"
+    }
+  };
+
+  // Spørsmål 5-matrise (maverick spend)
+  const MAVERICK_SPEND_MATRIX = {
+    "Bygg og anlegg": "30-50",
+    "Eiendomsdrift / Facility Management": "30-45",
+    "Industri og produksjon": "15-25",
+    "Handel / Retail": "25-35",
+    "Helse og omsorg": "30-45",
+    "Offentlig sektor / Kommune": "20-40",
+    "Olje, gass og energi": "20-30",
+    "Transport og logistikk": "25-35",
+    "Hotell og restaurant": "35-50",
+    "Landbruk": "40-55",
+    "IT og teknologi": "20-30",
+    "Utdanning": "35-50",
+    "Annet": "25-40"
+  };
+
+  // Nytt spørsmål: bestillinger per måned per ansatt
+  const ORDERS_PER_EMPLOYEE_MATRIX = {
+    "Bygg og anlegg": "1.2-2.5",
+    "Eiendomsdrift / Facility Management": "1.5-3.0",
+    "Industri og produksjon": "1.0-2.2",
+    "Handel / Retail": "0.8-1.5",
+    "Helse og omsorg": "1.0-2.0",
+    "Offentlig sektor / Kommune": "0.6-1.2",
+    "Olje, gass og energi": "1.2-2.0",
+    "Transport og logistikk": "0.8-1.6",
+    "Hotell og restaurant": "1.8-3.5",
+    "Landbruk": "0.4-0.9",
+    "IT og teknologi": "0.3-0.7",
+    "Utdanning": "0.4-0.8",
+    "Annet": "0.5-1.5"
+  };
+
+  const NOK0 = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 });
+  function formatKr(n){ return `${NOK0.format(Math.round(n))} kr`; }
+
+  function parseRangeToMinMax(rangeText){
+    if (!rangeText) return null;
+    const parts = String(rangeText).split('–');
+    if (parts.length !== 2) return null;
+    const toNum = (s)=> Number(String(s).replace(/\s+/g,'').replace(/[^\d]/g,''));
+    const min = toNum(parts[0]);
+    const max = toNum(parts[1]);
+    if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= 0) return null;
+    return { min, max };
+  }
+
+  function q3Question(industry){ return MATRIX_Q3[industry]?.question || 'Oppgi verdi'; }
+  function q3Default(industry, band){ return MATRIX_Q3[industry]?.defaults?.[band] ?? 0; }
+  function q3SliderMax(){ return 200; }
+
+  function purchaseRange(industry, band){ return PURCHASE_MATRIX[industry]?.[band] || ''; }
+  function purchaseDefaultValue(industry, band){
+    const r = parseRangeToMinMax(purchaseRange(industry, band));
+    if (!r) return 0;
+    return Math.round((r.min + r.max) / 2);
+  }
+
+  function parsePercentRange(rangeText){
+    if (!rangeText) return null;
+    const parts = String(rangeText).split('-');
+    if (parts.length !== 2) return null;
+    const min = Number(parts[0]);
+    const max = Number(parts[1]);
+    if (!Number.isFinite(min) || !Number.isFinite(max) || min < 0 || max > 100 || min > max) return null;
+    return { min, max };
+  }
+
+  function maverickRange(industry){ return MAVERICK_SPEND_MATRIX[industry] || ''; }
+
+  function maverickDefaultValue(industry){
+    const r = parsePercentRange(maverickRange(industry));
+    if (!r) return 0;
+    return Math.round((r.min + r.max) / 2);
+  }
+
+  function parseDecimalRange(rangeText){
+    if (!rangeText) return null;
+    const parts = String(rangeText).split('-');
+    if (parts.length !== 2) return null;
+    const min = Number(parts[0].replace(',', '.'));
+    const max = Number(parts[1].replace(',', '.'));
+    if (!Number.isFinite(min) || !Number.isFinite(max) || min < 0 || max < min) return null;
+    return { min, max };
+  }
+
+  function ordersPerEmployeeRange(industry){ return ORDERS_PER_EMPLOYEE_MATRIX[industry] || ''; }
+
+  function monthlyOrdersDefaultValue(industry, band){
+    const r = parseDecimalRange(ordersPerEmployeeRange(industry));
+    const employees = EMPLOYEE_BAND_MIDPOINT[band] || 0;
+    if (!r || employees <= 0) return 0;
+    const midpointRate = (r.min + r.max) / 2;
+    return Math.round(employees * midpointRate);
+  }
+
+  const SAVINGS_INPUTS = {
+    maverickMarkup: 0.14,
+    manualPoCost: 800,
+    digitalPoCost: 80,
+    duplicateRate: 0.01,
+    duplicateReduction: 0.80,
+    timeSavedPerOrderMinutes: 30,
+    hourlyCostWithOverhead: 520,
+    workWeeksPerYear: 46
+  };
+
+  // Backend endpoint that sends PDF report emails.
+  // Configure this to your API URL, for example: https://api.easyreq.no/report-request
+  const REPORT_API_ENDPOINT = '';
+  const REPORT_FROM_EMAIL = 'post@easyreq.no';
+
+  function formatNok(n){ return `${NOK0.format(Math.round(n))} NOK`; }
+
+  function estimateUsersFromBand(band){
+    const usersByBand = {
+      "1-10": 1,
+      "11-25": 2,
+      "26-50": 3,
+      "51-100": 5,
+      "101-250": 8,
+      "250+": 12
+    };
+    return usersByBand[band] || 1;
+  }
+
+  function jobTitlesForIndustry(industry){
+    const map = {
+      "Bygg og anlegg": ["Daglig leder", "Prosjektleder", "Innkjøpsansvarlig", "Driftsleder"],
+      "Eiendomsdrift / Facility Management": ["Facility Manager", "Driftsleder", "Innkjøpsansvarlig", "Daglig leder"],
+      "Industri og produksjon": ["Produksjonssjef", "Innkjøpssjef", "Supply Chain Manager", "Daglig leder"],
+      "Handel / Retail": ["Butikksjef", "Category Manager", "Innkjøpsansvarlig", "COO"],
+      "Helse og omsorg": ["Virksomhetsleder", "Innkjøpsansvarlig", "Økonomiansvarlig", "Driftsleder"],
+      "Offentlig sektor / Kommune": ["Enhetsleder", "Innkjøpsrådgiver", "Økonomisjef", "Prosjektleder"],
+      "Olje, gass og energi": ["Operations Manager", "Procurement Manager", "Prosjektleder", "Daglig leder"],
+      "Transport og logistikk": ["Logistikksjef", "Driftsleder", "Innkjøpsansvarlig", "COO"],
+      "Hotell og restaurant": ["Daglig leder", "Driftsleder", "Innkjøpsansvarlig", "Økonomiansvarlig"],
+      "Landbruk": ["Driftsleder", "Eier", "Innkjøpsansvarlig", "Økonomiansvarlig"],
+      "IT og teknologi": ["CTO", "COO", "Innkjøpsansvarlig", "Økonomisjef"],
+      "Utdanning": ["Rektor", "Administrativ leder", "Innkjøpsansvarlig", "Økonomiansvarlig"],
+      "Annet": ["Daglig leder", "Innkjøpsansvarlig", "Økonomiansvarlig", "Driftsleder"]
+    };
+    return map[industry] || map["Annet"];
+  }
+
+  function ensureJsPdfLoaded(){
+    if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+    if (window.__jspdfLoadingPromise) return window.__jspdfLoadingPromise;
+
+    window.__jspdfLoadingPromise = new Promise((resolve, reject)=>{
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+      script.async = true;
+      script.onload = ()=>{
+        if (window.jspdf && window.jspdf.jsPDF) resolve(window.jspdf.jsPDF);
+        else reject(new Error('JSPDF_LOAD_FAILED'));
+      };
+      script.onerror = ()=> reject(new Error('JSPDF_LOAD_FAILED'));
+      document.head.appendChild(script);
+    });
+
+    return window.__jspdfLoadingPromise;
+  }
+
+  function benchmarkStatus(value, min, max, lowerIsBetter = false){
+    if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max)) return 'Ingen benchmark tilgjengelig';
+    if (value < min) return lowerIsBetter ? 'Bedre enn benchmark (lavere)' : 'Under benchmark';
+    if (value > max) return lowerIsBetter ? 'Over benchmark (hoyere)' : 'Over benchmark';
+    return 'Innenfor benchmark';
+  }
+
+  function buildBenchmarks(){
+    const industry = answers.industry || 'Annet';
+    const band = answers.employees || '1-10';
+    const employees = EMPLOYEE_BAND_MIDPOINT[band] || 0;
+
+    const purchaseUser = Number(answers.purchaseVolume) || 0;
+    const purchaseTypical = parseRangeToMinMax(purchaseRange(industry, band));
+
+    const maverickUser = Number(answers.maverickSpend) || 0;
+    const maverickTypical = parsePercentRange(maverickRange(industry));
+
+    const ordersUser = Number(answers.ordersPerMonth) || 0;
+    const orderRateTypical = parseDecimalRange(ordersPerEmployeeRange(industry));
+    const ordersTypical = orderRateTypical && employees > 0
+      ? {
+          min: Math.round(orderRateTypical.min * employees),
+          max: Math.round(orderRateTypical.max * employees)
+        }
+      : null;
+
+    const q3User = Number(answers.q3) || 0;
+    const q3Typical = q3Default(industry, band);
+    const q3QuestionLabel = q3Question(industry);
+
+    return [
+      {
+        label: 'Arlig innkjopsvolum',
+        user: purchaseUser > 0 ? formatNok(purchaseUser) : 'Ikke oppgitt',
+        benchmark: purchaseTypical ? `${formatNok(purchaseTypical.min)} - ${formatNok(purchaseTypical.max)}` : 'Ingen benchmark',
+        status: purchaseTypical ? benchmarkStatus(purchaseUser, purchaseTypical.min, purchaseTypical.max) : 'Ingen benchmark tilgjengelig'
+      },
+      {
+        label: 'Ukontrollerte innkjop (maverick spend)',
+        user: `${maverickUser}%`,
+        benchmark: maverickTypical ? `${maverickTypical.min}% - ${maverickTypical.max}%` : 'Ingen benchmark',
+        status: maverickTypical ? benchmarkStatus(maverickUser, maverickTypical.min, maverickTypical.max, true) : 'Ingen benchmark tilgjengelig'
+      },
+      {
+        label: 'Bestillinger per maned (totalt)',
+        user: `${NOK0.format(Math.round(ordersUser))} bestillinger`,
+        benchmark: ordersTypical ? `${NOK0.format(ordersTypical.min)} - ${NOK0.format(ordersTypical.max)} bestillinger` : 'Ingen benchmark',
+        status: ordersTypical ? benchmarkStatus(ordersUser, ordersTypical.min, ordersTypical.max) : 'Ingen benchmark tilgjengelig'
+      },
+      {
+        label: q3QuestionLabel,
+        user: `${NOK0.format(Math.round(q3User))}`,
+        benchmark: `${NOK0.format(Math.round(q3Typical))} (typisk anslag)`,
+        status: q3User > q3Typical ? 'Over typisk anslag' : (q3User < q3Typical ? 'Under typisk anslag' : 'Lik typisk anslag')
+      }
+    ];
+  }
+
+  function calcProfitMultiplier(totalSavings, annualPurchase, users){
+    // Conservative proxy for annual implementation + subscription spend.
+    const annualInvestment = Math.max(50000, Math.round((annualPurchase * 0.005) + (users * 12000)));
+    const multiplier = annualInvestment > 0 ? (totalSavings / annualInvestment) : 0;
+    return { annualInvestment, multiplier };
+  }
+
+  async function generateAndDownloadPdfReport(lead, savings){
+    const JsPdfClass = await ensureJsPdfLoaded();
+    const doc = new JsPdfClass({ unit: 'pt', format: 'a4' });
+
+    const pageWidth = 595.28;
+    const pageHeight = 841.89;
+    const left = 44;
+    const right = 44;
+    const maxWidth = pageWidth - left - right;
+    let y = 44;
+
+    const ensureSpace = (heightNeeded = 20)=>{
+      if (y + heightNeeded > pageHeight - 44) {
+        doc.addPage();
+        y = 44;
+      }
+    };
+
+    const writeHeading = (text)=>{
+      ensureSpace(24);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(15);
+      doc.setTextColor(22, 27, 33);
+      doc.text(text, left, y);
+      y += 18;
+    };
+
+    const writeParagraph = (text, fontSize = 11, color = [34, 41, 47], lineHeight = 14)=>{
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(fontSize);
+      doc.setTextColor(color[0], color[1], color[2]);
+      const lines = doc.splitTextToSize(text, maxWidth);
+      lines.forEach((line)=>{
+        ensureSpace(lineHeight + 2);
+        doc.text(line, left, y);
+        y += lineHeight;
+      });
+    };
+
+    const writeFormulaBlock = (title, formula, details, resultText)=>{
+      ensureSpace(74);
+      doc.setDrawColor(233, 92, 12);
+      doc.setFillColor(252, 244, 238);
+      doc.roundedRect(left, y, maxWidth, 72, 6, 6, 'FD');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(22, 27, 33);
+      doc.text(title, left + 10, y + 17);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`Formel: ${formula}`, left + 10, y + 34);
+      doc.text(`Inndata: ${details}`, left + 10, y + 49);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text(`Arlig effekt: ${resultText}`, left + 10, y + 64);
+      y += 84;
+    };
+
+    const industry = answers.industry || 'Annet';
+    const company = lead.company || 'Ukjent bedrift';
+    const annualPurchase = Number(answers.purchaseVolume) || 0;
+    const maverickPercent = Number(answers.maverickSpend) || 0;
+    const ordersPerMonth = Number(answers.ordersPerMonth) || 0;
+    const users = savings.users || estimateUsersFromBand(answers.employees);
+    const benchmarks = buildBenchmarks();
+    const pm = calcProfitMultiplier(savings.totalSavings, annualPurchase, users);
+
+    doc.setFillColor(17, 20, 24);
+    doc.rect(0, 0, pageWidth, 104, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.setTextColor(255, 255, 255);
+    doc.text('easyReq - Innsiktsrapport', left, 52);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.text(`${company} | ${industry} | ${new Date().toLocaleDateString('nb-NO')}`, left, 72);
+    doc.text(`Kontakt: ${lead.name} (${lead.email})`, left, 88);
+
+    y = 132;
+    writeHeading('Total estimert arlig besparelse');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(26);
+    doc.setTextColor(233, 92, 12);
+    doc.text(formatNok(savings.totalSavings), left, y + 4);
+    y += 24;
+
+    writeParagraph('Beregningen er basert pa deres inndata, bransjebenchmarks og dokumenterte effektforutsetninger for digitalisering av innkjopsprosessen.');
+    y += 6;
+
+    writeHeading('1) Fire besparelseskategorier med detaljerte utregninger');
+    writeFormulaBlock(
+      'A. Besparelse pa ukontrollerte innkjop',
+      'Arlig innkjopsvolum x maverick-andel x 14% prispalslag',
+      `${formatNok(annualPurchase)} x ${maverickPercent}% x 14%`,
+      formatNok(savings.maverickSavings)
+    );
+    writeFormulaBlock(
+      'B. Effektivisering av innkjopsprosess',
+      'Bestillinger/maned x 12 x (800 NOK - 80 NOK)',
+      `${NOK0.format(Math.round(ordersPerMonth))} x 12 x 720 NOK`,
+      formatNok(savings.processSavings)
+    );
+    writeFormulaBlock(
+      'C. Tidsbesparelse for teamet',
+      '(Bestillinger/uke x 0,5 timer) x 46 uker x brukere x 520 NOK/time',
+      `(${NOK0.format(Math.round(ordersPerMonth))}/4 x 0,5) x 46 x ${users} x 520`,
+      `${formatNok(savings.timeSavings)} (${NOK0.format(Math.round(savings.hoursSavedPerYear))} timer/ar)`
+    );
+    writeFormulaBlock(
+      'D. Unngatte feilbetalinger / duplikater',
+      'Arlig innkjopsvolum x 1% feilrate x 80% reduksjon',
+      `${formatNok(annualPurchase)} x 1% x 80%`,
+      formatNok(savings.duplicateSavings)
+    );
+
+    writeHeading('2) Bransjebenchmarks vs deres tall');
+    benchmarks.forEach((b)=>{
+      writeParagraph(`${b.label}:`, 11, [22, 27, 33]);
+      writeParagraph(`Deres tall: ${b.user}`, 10, [61, 73, 86]);
+      writeParagraph(`Benchmark: ${b.benchmark}`, 10, [61, 73, 86]);
+      writeParagraph(`Vurdering: ${b.status}`, 10, [233, 92, 12]);
+      y += 4;
+    });
+
+    writeHeading('3) Profittmultiplikator-visualisering');
+    writeParagraph(`Antatt arlig investering i implementering + lisens: ${formatNok(pm.annualInvestment)}.`);
+    writeParagraph(`Estimert gevinstmultiplikator: ${pm.multiplier.toFixed(1)}x (for hver 1 NOK investert, potensielt ${pm.multiplier.toFixed(1)} NOK tilbake).`);
+
+    ensureSpace(52);
+    const barX = left;
+    const barY = y + 8;
+    const barW = maxWidth;
+    const barH = 16;
+    const normalized = Math.max(0, Math.min(pm.multiplier / 12, 1));
+    doc.setDrawColor(180, 188, 196);
+    doc.rect(barX, barY, barW, barH);
+    doc.setFillColor(233, 92, 12);
+    doc.rect(barX, barY, barW * normalized, barH, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(61, 73, 86);
+    doc.text('0x', barX, barY + 30);
+    doc.text('6x', barX + (barW / 2) - 6, barY + 30);
+    doc.text('12x+', barX + barW - 20, barY + 30);
+    y += 52;
+
+    writeHeading('4) Konkret handlingsplan (3 steg)');
+    writeParagraph('Steg 1: Kartlegg lekkasje. Identifiser toppleverandorer, innkjop uten avtale og avdelinger med hoy maverick-andel de neste 14 dagene.');
+    writeParagraph('Steg 2: Innfor styrt bestillingsflyt. Sett opp godkjenning, leverandorkatalog og budsjettrammer for alle faste vare- og tjenestekjop innen 30 dager.');
+    writeParagraph('Steg 3: Folg opp KPI-er manedlig. Spor maverick-andel, bestillingskostnad og sparte timer, og juster tiltak per lokasjon/avdeling for kontinuerlig forbedring.');
+
+    y += 6;
+    writeHeading('5) Neste steg');
+    writeParagraph('Book en demo med easyReq for en detaljert gjennomgang av deres potensial og en tilpasset implementeringsplan.');
+    writeParagraph('CTA: Book demo pa https://outlook.office.com/book/easyReq1@easyreq.no/?ismsaljsauthenabled');
+
+    const safeCompany = String(company || 'rapport').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    doc.save(`easyreq-rapport-${safeCompany || 'bedrift'}-${dateStamp}.pdf`);
+  }
+
+  function calculateSavingsResult(){
+    const annualPurchase = Number(answers.purchaseVolume) || 0;
+    const maverickPercent = Number(answers.maverickSpend) || 0;
+    const ordersPerMonth = Number(answers.ordersPerMonth) || 0;
+    const users = estimateUsersFromBand(answers.employees);
+
+    const maverickSavings = annualPurchase * (maverickPercent / 100) * SAVINGS_INPUTS.maverickMarkup;
+    const processSavings = (ordersPerMonth * 12) * (SAVINGS_INPUTS.manualPoCost - SAVINGS_INPUTS.digitalPoCost);
+
+    const hoursSavedPerWeekPerUser = (ordersPerMonth / 4) * (SAVINGS_INPUTS.timeSavedPerOrderMinutes / 60);
+    const hoursSavedPerYear = hoursSavedPerWeekPerUser * SAVINGS_INPUTS.workWeeksPerYear * users;
+    const timeSavings = hoursSavedPerYear * SAVINGS_INPUTS.hourlyCostWithOverhead;
+
+    const duplicateSavings = annualPurchase * SAVINGS_INPUTS.duplicateRate * SAVINGS_INPUTS.duplicateReduction;
+    const totalSavings = maverickSavings + processSavings + timeSavings + duplicateSavings;
+
+    return {
+      maverickSavings,
+      processSavings,
+      timeSavings,
+      duplicateSavings,
+      totalSavings,
+      hoursSavedPerYear,
+      users
+    };
+  }
+
+  function animateCountUp(element, target, durationMs = 1600){
+    const from = 0;
+    const start = performance.now();
+
+    function tick(now){
+      const p = Math.min((now - start) / durationMs, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      const value = Math.round(from + (target - from) * eased);
+      element.textContent = formatNok(value);
+      if (p < 1) requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  async function sendReportRequest(payload){
+    if (!REPORT_API_ENDPOINT) {
+      throw new Error('REPORT_API_NOT_CONFIGURED');
+    }
+
+    const res = await fetch(REPORT_API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      throw new Error(`REPORT_REQUEST_FAILED_${res.status}`);
+    }
+
+    return res;
+  }
+
+  async function showSavingsResult(){
+    const r = calculateSavingsResult();
+    const industry = answers.industry || "Annet";
+
+    await botSay('Basert på svarene deres har vi beregnet hva dere taper på innkjøpsprosessen hvert år', 250, true);
+
+    // Keep full breakdown available for later PDF generation.
+    window.latestSavingsBreakdown = {
+      ...r,
+      industry,
+      answers: { ...answers },
+      calculatedAt: new Date().toISOString()
+    };
+
+    const wrap = document.createElement('div');
+    wrap.className = 'result-wrap';
+
+    const head = document.createElement('div');
+    head.className = 'result-head';
+
+    const label = document.createElement('div');
+    label.className = 'result-label';
+    label.textContent = 'Vår analyse viser at dere sannsynligvis taper';
+
+    const total = document.createElement('div');
+    total.className = 'result-total';
+    total.textContent = '0 NOK';
+
+    head.appendChild(label);
+    head.appendChild(total);
+
+    const list = document.createElement('div');
+    list.className = 'result-list';
+
+    const items = [
+      ['1. Besparelse på ukontrollerte innkjøp', formatNok(r.maverickSavings)],
+      ['2. Effektivisering av innkjøpsprosessen', formatNok(r.processSavings)],
+      ['3. Tidsbesparing for teamet', `${formatNok(r.timeSavings)} (${NOK0.format(Math.round(r.hoursSavedPerYear))} timer/år)`],
+      ['4. Unngåtte feilbetalinger', formatNok(r.duplicateSavings)]
+    ];
+
+    items.forEach(([kText, vText])=>{
+      const row = document.createElement('div');
+      row.className = 'result-item';
+
+      const k = document.createElement('div');
+      k.className = 'k';
+      k.textContent = kText;
+
+      const v = document.createElement('div');
+      v.className = 'v';
+      v.textContent = vText;
+
+      row.appendChild(k);
+      row.appendChild(v);
+      list.appendChild(row);
+    });
+
+    const cta = document.createElement('div');
+    cta.className = 'result-cta';
+    cta.textContent = 'Få full rapport med bransjebenchmarks og handlingsplan - rett i innboksen din.';
+
+    const form = document.createElement('form');
+    form.className = 'lead-form';
+
+    const email = document.createElement('input');
+    email.type = 'email';
+    email.required = true;
+    email.placeholder = 'E-postadresse *';
+    email.autocomplete = 'email';
+
+    const name = document.createElement('input');
+    name.type = 'text';
+    name.required = true;
+    name.placeholder = 'Navn *';
+    name.autocomplete = 'name';
+
+    const company = document.createElement('input');
+    company.type = 'text';
+    company.required = true;
+    company.placeholder = 'Bedrift *';
+    company.autocomplete = 'organization';
+
+    const phone = document.createElement('input');
+    phone.type = 'tel';
+    phone.placeholder = 'Telefon (valgfritt)';
+    phone.autocomplete = 'tel';
+
+    const title = document.createElement('select');
+    title.className = 'full';
+    title.setAttribute('aria-label', 'Stillingstittel');
+    const titlePlaceholder = document.createElement('option');
+    titlePlaceholder.value = '';
+    titlePlaceholder.textContent = 'Stillingstittel (valgfritt)';
+    titlePlaceholder.selected = true;
+    title.appendChild(titlePlaceholder);
+    jobTitlesForIndustry(industry).forEach((t)=>{
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      title.appendChild(opt);
+    });
+
+    const submitWrap = document.createElement('div');
+    submitWrap.className = 'submit-wrap';
+
+    const submit = document.createElement('button');
+    submit.type = 'submit';
+    submit.className = 'btn primary';
+    submit.textContent = 'Generer og last ned PDF';
+
+    const msg = document.createElement('div');
+    msg.className = 'lead-form-msg';
+
+    submitWrap.appendChild(submit);
+
+    form.appendChild(email);
+    form.appendChild(name);
+    form.appendChild(company);
+    form.appendChild(phone);
+    form.appendChild(title);
+    form.appendChild(submitWrap);
+    form.appendChild(msg);
+
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      if (!form.reportValidity()) return;
+
+      submit.disabled = true;
+      submit.textContent = 'Genererer PDF...';
+      msg.textContent = 'Bygger rapport med utregninger og benchmarks...';
+
+      const payload = {
+        fromEmail: REPORT_FROM_EMAIL,
+        lead: {
+          email: email.value.trim(),
+          name: name.value.trim(),
+          company: company.value.trim(),
+          phone: phone.value.trim(),
+          title: title.value
+        },
+        industry,
+        answers: { ...answers },
+        savings: { ...window.latestSavingsBreakdown }
+      };
+
+      try {
+        await generateAndDownloadPdfReport(payload.lead, payload.savings);
+
+        if (REPORT_API_ENDPOINT) {
+          await sendReportRequest(payload);
+          msg.textContent = 'PDF er lastet ned, og rapporten er sendt til e-posten din.';
+        } else {
+          msg.textContent = 'PDF er lastet ned. Legg til REPORT_API_ENDPOINT hvis dere ogsa vil sende den pa e-post automatisk.';
+        }
+      } catch (err) {
+        const code = String(err && err.message);
+        if (code.includes('JSPDF_LOAD_FAILED')) {
+          msg.textContent = 'Kunne ikke laste PDF-modulen akkurat na. Prov igjen.';
+        } else if (code.includes('REPORT_REQUEST_FAILED_')) {
+          msg.textContent = 'PDF er lastet ned, men e-postsending feilet. Prov igjen om litt.';
+        } else {
+          msg.textContent = 'Kunne ikke generere rapport akkurat na. Prov igjen om litt.';
+        }
+      } finally {
+        submit.disabled = false;
+        submit.textContent = 'Generer og last ned PDF';
+      }
+    });
+
+    const note = document.createElement('div');
+    note.className = 'result-note';
+    note.textContent = `Forutsetninger: prispåslag maverick 14%, PO-kost manuell/digital 800/80 NOK, duplikat 1% med 80% reduksjon, tidsbesparelse 30 min/bestilling, timekost 520 NOK, 46 arbeidsuker, estimerte brukere ${r.users}.`;
+
+    wrap.appendChild(head);
+    wrap.appendChild(list);
+    wrap.appendChild(cta);
+    wrap.appendChild(form);
+    wrap.appendChild(note);
+
+    chat.appendChild(wrap);
+    scrollToBottom();
+    animateCountUp(total, r.totalSavings);
+  }
+
+  const chat = document.getElementById('chat');
+  const progressText = document.getElementById('progressText');
+  const answers = {};
+  let currentStep = -1;
+
+  const steps = [
+    { id:"industry",  label:"Velg bransje",          type:"dropdown", question:"Velg bransje" },
+    { id:"employees", label:"Hvor mange ansatte er dere?",        type:"boxes",    question:"Hvor mange ansatte er dere?" },
+    { id:"q3",        label:"",                      type:"slider",   question:"" },
+    { id:"purchaseVolume", label:"Hva er deres årlig innkjøpsvolum?", type:"purchase_slider", question:"Hva er deres årlig innkjøpsvolum?" },
+    { id:"maverickSpend", label:"Hvor stor andel av innkjøpene er uten fast avtale eller godkjenning i %?", type:"maverick_slider", question:"Hvor stor andel av innkjøpene er uten fast avtale eller godkjenning i %?" },
+    { id:"ordersPerMonth", label:"Hvor mange kjøp/bestillinger har dere totalt pr. mnd?", type:"orders_slider", question:"Hvor mange kjøp/bestillinger har dere totalt pr. mnd?" },
+    { id:"purchaseMethod", label:"Hvordan håndterer dere innkjøp i dag", type:"multiple_choice", question:"Hvordan håndterer dere innkjøp i dag?", options:["Excel/regneark", "epost", "telefon", "Innkjøpssystem", "Vi har ingen fast prosess"] }
+  ];
+
+  const sleep = (ms)=> new Promise(r=>setTimeout(r, ms));
+
+  function postEmbedHeight(){
+    if (window.parent === window) return;
+    const h = Math.max(
+      document.body ? document.body.scrollHeight : 0,
+      document.documentElement ? document.documentElement.scrollHeight : 0
+    );
+    try {
+      window.parent.postMessage({ type: 'easyreq:height', height: h }, '*');
+    } catch (e) {
+      // Ignore cross-origin messaging errors.
+    }
+  }
+
+  function scrollToBottom(){
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    chat.scrollTo({ top: chat.scrollHeight, behavior: reduce ? 'auto' : 'smooth' });
+    postEmbedHeight();
+  }
+  function updateProgress(){
+    const done = Math.max(0, currentStep);
+    progressText.textContent = (done > 0) ? `Fremdrift: ${done}/${steps.length} spørsmål besvart` : '';
+  }
+
+  function addBotRow(content){
+    const row = document.createElement('div');
+    row.className = 'row bot';
+
+    const img = document.createElement('img');
+    img.className = 'avatar bot';
+    img.alt = 'easyReq';
+    img.src = AVATAR_BOT_URL || FALLBACK_BOT;
+    row.appendChild(img);
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg bot';
+    if (typeof content === 'string') bubble.innerHTML = content;
+    else bubble.appendChild(content);
+    row.appendChild(bubble);
+
+    chat.appendChild(row);
+    scrollToBottom();
+    return bubble;
+  }
+
+  function addUserRow(text){
+    const row = document.createElement('div');
+    row.className = 'row user';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg user';
+    bubble.textContent = text;
+    row.appendChild(bubble);
+
+    const img = document.createElement('img');
+    img.className = 'avatar user';
+    img.alt = 'Besøkende';
+    img.src = AVATAR_USER_URL || FALLBACK_USER;
+    row.appendChild(img);
+
+    chat.appendChild(row);
+    scrollToBottom();
+  }
+
+  function typingBubble(){
+    const row = document.createElement('div');
+    row.className = 'row bot';
+
+    const img = document.createElement('img');
+    img.className = 'avatar bot';
+    img.alt = 'easyReq';
+    img.src = AVATAR_BOT_URL || FALLBACK_BOT;
+    row.appendChild(img);
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg bot';
+    const t = document.createElement('div');
+    t.className = 'typing';
+    t.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+    bubble.appendChild(t);
+    row.appendChild(bubble);
+
+    chat.appendChild(row);
+    scrollToBottom();
+    return ()=> row.remove();
+  }
+
+  async function botSay(html, delayMs=350, isQuestion=false){
+    const stop = typingBubble();
+    await sleep(delayMs);
+    stop();
+    const bubble = addBotRow(html);
+    if (isQuestion) bubble.classList.add('question');
+  }
+
+  async function showStart(){
+    await botSay('Hei! 👋 La oss starte med noen kjappe spørsmål.');
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+
+    const btn = document.createElement('button');
+    btn.className = 'btn primary';
+    btn.textContent = 'Start';
+    btn.addEventListener('click', ()=> askNext());
+
+    actions.appendChild(btn);
+    addBotRow('Trykk start når du er klar.');
+    chat.appendChild(actions);
+    scrollToBottom();
+  }
+
+  async function askNext(){
+    currentStep++;
+    updateProgress();
+
+    if (currentStep >= steps.length){
+      await showSavingsResult();
+      await showRestart();
+      return;
+    }
+
+    const s = steps[currentStep];
+
+    if (s.type === 'dropdown'){
+      await botSay(s.question, 350, true);
+
+      const wrap = document.createElement('div');
+      wrap.className = 'inline-form';
+      wrap.style.alignSelf = 'flex-end';
+      wrap.style.marginRight = 'var(--er-side-pad)';
+
+      const select = document.createElement('select');
+      select.setAttribute('aria-label', s.label);
+
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'Velg...';
+      placeholder.disabled = true;
+      placeholder.selected = true;
+      select.appendChild(placeholder);
+
+      INDUSTRIES.forEach(ind=>{
+        const opt = document.createElement('option');
+        opt.value = ind;
+        opt.textContent = ind;
+        select.appendChild(opt);
+      });
+
+      const send = document.createElement('button');
+      send.className = 'btn primary';
+      send.textContent = 'OK';
+
+      async function submit(){
+        const v = select.value;
+        if (!v) return;
+        answers[s.id] = v;
+        addUserRow(`${s.label}: ${v}`);
+        await sleep(120);
+        askNext();
+      }
+
+      send.addEventListener('click', submit);
+      wrap.appendChild(select);
+      wrap.appendChild(send);
+
+      chat.appendChild(wrap);
+      scrollToBottom();
+      return;
+    }
+
+    if (s.type === 'boxes'){
+      await botSay(s.question, 350, true);
+
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+
+      const grid = document.createElement('div');
+      grid.className = 'box-grid';
+
+      let selected = answers[s.id] || null;
+
+      function setSelected(id){
+        selected = id;
+        answers[s.id] = id;
+        grid.querySelectorAll('.box').forEach(el=>{
+          el.classList.toggle('selected', el.dataset.id === id);
+        });
+      }
+
+      EMPLOYEE_BANDS.forEach((band)=>{
+        const btn = document.createElement('button');
+        btn.className = 'box';
+        btn.type = 'button';
+        btn.dataset.id = band;
+        btn.textContent = band;
+
+        if (band === selected) btn.classList.add('selected');
+
+        btn.addEventListener('click', async ()=>{
+          setSelected(band);
+          addUserRow(`${s.label}: ${band}`);
+          await sleep(120);
+          askNext();
+        });
+
+        grid.appendChild(btn);
+      });
+
+      actions.appendChild(grid);
+      chat.appendChild(actions);
+      scrollToBottom();
+      return;
+    }
+
+    if (s.type === 'slider'){
+      const industry = answers["industry"];
+      const band = answers["employees"];
+
+      const question = q3Question(industry);
+      const defaultVal = q3Default(industry, band);
+
+      await botSay(question, 350, true);
+      await botSay(`<span class="meta">Forslag basert på bransje og hvor mange ansatte dere er: <b>${defaultVal}</b></span>`, 180);
+
+      let value = Number.isFinite(answers[s.id]) ? Number(answers[s.id]) : defaultVal;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'slider-wrap slider-wrap-right-mid';
+
+      const top = document.createElement('div');
+      top.className = 'slider-top';
+
+      const k = document.createElement('div');
+      k.className = 'k';
+      k.textContent = 'Juster tallet';
+
+      const v = document.createElement('div');
+      v.className = 'v';
+      v.textContent = String(value);
+
+      top.appendChild(k);
+      top.appendChild(v);
+
+      const range = document.createElement('input');
+      range.type = 'range';
+      range.min = '0';
+      range.max = String(q3SliderMax());
+      range.step = '1';
+      range.value = String(value);
+      range.setAttribute('aria-label', question);
+
+      range.addEventListener('input', ()=>{
+        value = Number(range.value);
+        v.textContent = String(value);
+      });
+
+      const send = document.createElement('button');
+      send.className = 'btn primary';
+      send.textContent = 'OK';
+
+      send.addEventListener('click', async ()=>{
+        answers[s.id] = Number(value);
+        addUserRow(`${question}: ${value}`);
+        await sleep(120);
+        askNext();
+      });
+
+      wrap.appendChild(top);
+      wrap.appendChild(range);
+      wrap.appendChild(send);
+
+      chat.appendChild(wrap);
+      scrollToBottom();
+      return;
+    }
+
+if (s.type === 'purchase_slider'){
+      const industry = answers["industry"];
+      const band = answers["employees"];
+
+      const rangeText = purchaseRange(industry, band);
+      const r = parseRangeToMinMax(rangeText);
+
+      await botSay(s.question, 350, true);
+      await botSay(`<span class="meta">Estimert intervall (basert på bransje og hvor mange ansatte dere er): <b>${rangeText || '—'}</b></span>`, 180);
+      await botSay(`<span class="meta">Inkluder alle innkjøp av varer og tjenester — materialer, utstyr, forbruksmateriell, underleverandører.</span>`, 180);
+
+      const min = r ? r.min : 0;
+      const max = r ? r.max : 200000000;
+      const step = 100000;
+
+      let value = Number.isFinite(answers[s.id]) ? Number(answers[s.id]) : purchaseDefaultValue(industry, band);
+      value = Math.max(min, Math.min(max, value));
+
+      const wrap = document.createElement('div');
+      wrap.className = 'slider-wrap slider-wrap-right-mid';
+
+      const top = document.createElement('div');
+      top.className = 'slider-top';
+
+      const k = document.createElement('div');
+      k.className = 'k';
+      k.textContent = 'Juster verdien';
+
+      const v = document.createElement('div');
+      v.className = 'v';
+      v.textContent = formatKr(value);
+
+      top.appendChild(k);
+      top.appendChild(v);
+
+      const range = document.createElement('input');
+      range.type = 'range';
+      range.min = String(min);
+      range.max = String(max);
+      range.step = String(step);
+      range.value = String(value);
+      range.setAttribute('aria-label', s.label);
+
+      function updateDisplays(newVal){
+        value = newVal;
+        v.textContent = formatKr(value);
+        range.value = String(value);
+      }
+
+      range.addEventListener('input', ()=>{
+        updateDisplays(Number(range.value));
+      });
+
+      const send = document.createElement('button');
+      send.className = 'btn primary';
+      send.textContent = 'OK';
+
+      send.addEventListener('click', async ()=>{
+        answers[s.id] = Number(value);
+        addUserRow(`${s.label}: ${formatKr(value)}`);
+        await sleep(120);
+        askNext();
+      });
+
+      wrap.appendChild(top);
+      wrap.appendChild(range);
+      wrap.appendChild(send);
+
+      chat.appendChild(wrap);
+      scrollToBottom();
+      return;
+    }
+
+    if (s.type === 'maverick_slider'){
+      const industry = answers["industry"];
+      const rangeText = maverickRange(industry);
+      const r = parsePercentRange(rangeText);
+
+      await botSay(s.question, 350, true);
+      await botSay(`<span class="meta">Hvor mange av innkjøpene skjer uten forhåndsgodkjenning, uten rammeavtale eller via direkte kontakt med leverandør?</span>`, 180);
+      await botSay(`<span class="meta">Typisk intervall for ${industry}: <b>${rangeText ? rangeText.replace('-', '–') + '%' : '—'}</b></span>`, 180);
+
+      const min = r ? r.min : 0;
+      const max = r ? r.max : 100;
+      const step = 1;
+
+      let value = Number.isFinite(answers[s.id]) ? Number(answers[s.id]) : maverickDefaultValue(industry);
+      value = Math.max(min, Math.min(max, value));
+
+      const wrap = document.createElement('div');
+      wrap.className = 'slider-wrap slider-wrap-right-mid';
+
+      const top = document.createElement('div');
+      top.className = 'slider-top';
+
+      const k = document.createElement('div');
+      k.className = 'k';
+      k.textContent = 'Juster prosentandel';
+
+      const v = document.createElement('div');
+      v.className = 'v';
+      v.textContent = `${value}%`;
+
+      top.appendChild(k);
+      top.appendChild(v);
+
+      const range = document.createElement('input');
+      range.type = 'range';
+      range.min = String(min);
+      range.max = String(max);
+      range.step = String(step);
+      range.value = String(value);
+      range.setAttribute('aria-label', s.label);
+
+      range.addEventListener('input', ()=>{
+        value = Number(range.value);
+        v.textContent = `${value}%`;
+      });
+
+      const send = document.createElement('button');
+      send.className = 'btn primary';
+      send.textContent = 'OK';
+
+      send.addEventListener('click', async ()=>{
+        answers[s.id] = Number(value);
+        addUserRow(`${s.label}: ${value}%`);
+        await sleep(120);
+        askNext();
+      });
+
+      wrap.appendChild(top);
+      wrap.appendChild(range);
+      wrap.appendChild(send);
+
+      chat.appendChild(wrap);
+      scrollToBottom();
+      return;
+    }
+
+    if (s.type === 'orders_slider'){
+      const industry = answers["industry"];
+      const band = answers["employees"];
+      const rateRange = ordersPerEmployeeRange(industry);
+      const defaultVal = monthlyOrdersDefaultValue(industry, band);
+
+      await botSay(s.question, 350, true);
+      await botSay(`<span class="meta">Typisk for ${industry}: <b>${rateRange ? rateRange.replace('-', '–').replace(/\./g, ',') : '—'}</b> bestillinger per ansatt per måned</span>`, 180);
+      await botSay(`<span class="meta">Estimert fra bransje og ansatte: <b>${defaultVal}</b> bestillinger/mnd</span>`, 180);
+
+      let minOrders = defaultVal * 0.5;
+      let maxOrders = defaultVal * 2.5;
+      minOrders = Math.max(0, Math.round(minOrders));
+      maxOrders = Math.round(maxOrders);
+
+      let value = Number.isFinite(answers[s.id]) ? Number(answers[s.id]) : defaultVal;
+      value = Math.max(minOrders, Math.min(maxOrders, value));
+
+      const wrap = document.createElement('div');
+      wrap.className = 'slider-wrap slider-wrap-right-mid';
+
+      const top = document.createElement('div');
+      top.className = 'slider-top';
+
+      const k = document.createElement('div');
+      k.className = 'k';
+      k.textContent = 'Juster antall';
+
+      const v = document.createElement('div');
+      v.className = 'v';
+      v.textContent = String(value);
+
+      top.appendChild(k);
+      top.appendChild(v);
+
+      const range = document.createElement('input');
+      range.type = 'range';
+      range.min = String(minOrders);
+      range.max = String(maxOrders);
+      range.step = '1';
+      range.value = String(value);
+      range.setAttribute('aria-label', s.label);
+
+      range.addEventListener('input', ()=>{
+        value = Number(range.value);
+        v.textContent = String(value);
+      });
+
+      const send = document.createElement('button');
+      send.className = 'btn primary';
+      send.textContent = 'OK';
+
+      send.addEventListener('click', async ()=>{
+        answers[s.id] = Number(value);
+        addUserRow(`${s.label}: ${value}`);
+        await sleep(120);
+        askNext();
+      });
+
+      wrap.appendChild(top);
+      wrap.appendChild(range);
+      wrap.appendChild(send);
+
+      chat.appendChild(wrap);
+      scrollToBottom();
+      return;
+    }
+
+    if (s.type === 'multiple_choice'){
+      await botSay(s.question, 350, true);
+      await botSay(`<span class="meta">Dersom dere har en kombinasjon kan dere velge flere av alternativene.</span>`, 180);
+
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+      actions.style.flexDirection = 'column';
+      actions.style.alignItems = 'flex-end';
+      actions.style.marginRight = 'var(--er-side-pad)';
+      actions.style.width = '100%';
+
+      const grid = document.createElement('div');
+      grid.className = 'box-grid';
+
+      let selectedChoices = answers[s.id] || [];
+      if (!Array.isArray(selectedChoices)) selectedChoices = [];
+
+      function toggleChoice(choice){
+        const idx = selectedChoices.indexOf(choice);
+        if (idx === -1){
+          selectedChoices.push(choice);
+        } else {
+          selectedChoices.splice(idx, 1);
+        }
+        grid.querySelectorAll('.box').forEach(el=>{
+          el.classList.toggle('selected', selectedChoices.includes(el.textContent));
+        });
+      }
+
+      s.options.forEach((choice)=>{
+        const btn = document.createElement('button');
+        btn.className = 'box';
+        btn.type = 'button';
+        btn.textContent = choice;
+
+        if (selectedChoices.includes(choice)) btn.classList.add('selected');
+
+        btn.addEventListener('click', ()=>{
+          toggleChoice(choice);
+        });
+
+        grid.appendChild(btn);
+      });
+
+      const send = document.createElement('button');
+      send.className = 'btn primary';
+      send.textContent = 'OK';
+      send.style.marginTop = '8px';
+
+      send.addEventListener('click', async ()=>{
+        if (selectedChoices.length === 0) return;
+        answers[s.id] = [...selectedChoices];
+        const displayText = selectedChoices.join(', ');
+        addUserRow(`${s.label}: ${displayText}`);
+        await sleep(120);
+        askNext();
+      });
+
+      actions.appendChild(grid);
+      actions.appendChild(send);
+      chat.appendChild(actions);
+      scrollToBottom();
+      return;
+    }
+  }
+
+  async function showRestart(){
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+
+    const restart = document.createElement('button');
+    restart.className = 'chip';
+    restart.textContent = 'Start på nytt';
+    restart.addEventListener('click', ()=>{
+      chat.innerHTML = '';
+      Object.keys(answers).forEach(k=>delete answers[k]);
+      currentStep = -1;
+      updateProgress();
+      showStart();
+    });
+
+    actions.appendChild(restart);
+    chat.appendChild(actions);
+    scrollToBottom();
+  }
+
+  window.addEventListener('load', ()=> postEmbedHeight());
+  window.addEventListener('resize', ()=> postEmbedHeight());
+
+  const __embedResizeObserver = new MutationObserver(()=> postEmbedHeight());
+  __embedResizeObserver.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+
+  (async function init(){
+    await showStart();
+    postEmbedHeight();
+  })();
+</script>
+</body>
+</html>
