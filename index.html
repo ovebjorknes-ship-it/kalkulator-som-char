@@ -1,60 +1,38 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat UI</title>
-    <style>
-        /* Basic styles for chat UI */
-        .chat-container { max-width: 600px; margin: auto; border: 1px solid #ccc; border-radius: 5px; padding: 10px; } 
-        .message { padding: 10px; border-radius: 5px; margin: 5px 0; }
-        .avatar { width: 30px; height: 30px; border-radius: 50%; display: inline-block; }
-        .send-button { margin-top: 10px; }
-    </style>
-</head>
-<body>
-    <div class="chat-container">
-        <div class="message" id="message-area">
-            <div class="bubble" id="bubble-chat"></div>
-        </div>
-        <select id="industry-dropdown">
-            <option value="">Select Industry</option>
-            <option value="Annet">Annet</option>
-            <option value="Bygg og anlegg">Bygg og anlegg</option>
-            <option value="Eiendomsdrift / Facility Management">Eiendomsdrift / Facility Management</option>
-            <option value="Handel / Retail">Handel / Retail</option>
-            <option value="Helse og omsorg">Helse og omsorg</option>
-            <option value="Hotell og restaurant">Hotell og restaurant</option>
-            <option value="IT og teknologi">IT og teknologi</option>
-            <option value="Industri og produksjon">Industri og produksjon</option>
-            <option value="Landbruk">Landbruk</option>
-            <option value="Offentlig sektor / Kommune">Offentlig sektor / Kommune</option>
-            <option value="Olje, gass og energi">Olje, gass og energi</option>
-            <option value="Transport og logistikk">Transport og logistikk</option>
-            <option value="Utdanning">Utdanning</option>
-        </select>
-        <div id="employee-bands">
-            <label><input type="checkbox" value="1-10"> 1-10</label>
-            <label><input type="checkbox" value="11-25"> 11-25</label>
-            <label><input type="checkbox" value="26-50"> 26-50</label>
-            <label><input type="checkbox" value="51-100"> 51-100</label>
-            <label><input type="checkbox" value="101-250"> 101-250</label>
-            <label><input type="checkbox" value="250+"> 250+</label>
-        </div>
-        <div id="matrix-question">
-            <label id="industry-specific-question"></label>
-            <input type="range" id="slider" min="0" max="200" step="1" value="100">
-            <span id="slider-value">100</span>
-            <button id="confirm-button" class="send-button">OK</button>
-        </div>
-    </div>
-    <script>
-        const slider = document.getElementById('slider');
-        const sliderValue = document.getElementById('slider-value');
-        slider.oninput = function() {
-            sliderValue.innerHTML = this.value;
-        }
-        // Additional JS for handling dropdown, checkboxes, and confirming the response
-    </script>
-</body>
-</html>
+<div class='chat-ui'>
+  <div class='hero'>
+    <h1>Welcome to the Chat Bot</h1>
+  </div>
+  <div class='chat-bubbles'>
+    <div class='bubble user'>Hello, I need assistance!</div>
+    <div class='bubble bot'>Sure! What industry are you in?</div>
+  </div>
+  <div class='typing-indicator'>
+    <span>...</span>
+  </div>
+  <div class='actions'>
+    <label for='industry'>Select Industry:</label>
+    <select id='industry'>
+      <option value='tech'>Technology</option>
+      <option value='finance'>Finance</option>
+      <option value='health'>Healthcare</option>
+      <!-- More options can be added here -->
+    </select>
+  </div>
+  <div class='employee-band'>
+    <label for='employee-band'>Select Employee Band:</label>
+    <input type='radio' id='band1' name='employee-band' value='band1'> Band 1
+    <input type='radio' id='band2' name='employee-band' value='band2'> Band 2
+    <input type='radio' id='band3' name='employee-band' value='band3'> Band 3
+  </div>
+  <div class='slider' id='industry-slider'>
+    <label for='slider'>Industry Slider (Max: 200):</label>
+    <input type='range' id='slider' min='0' max='200' value='100'>
+  </div>
+  <div class='slider' id='purchase-slider'>
+    <label for='purchase-volume'>Annual Purchase Volume:</label>
+    <input type='range' id='purchase-volume' min='0' max='1000000' step='10000'>
+    <p>Range: 0 - 1000000</p>
+    <p>Help: Select your purchase volume based on your industry and employee band.</p>
+  </div>
+  <button id='restart-button'>Restart</button>
+</div>
